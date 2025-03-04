@@ -1,0 +1,27 @@
+<html>
+    <head>
+        <title>Client</title>
+    </head>
+    <body>
+        <img src="">
+        <script>
+            const img = document.querySelector('img');
+            const WS_URL = 'wss://free.piesocket.com/v3/your_channel_id?api_key=your_api_key'; // Replace with actual Piesocket details
+            const ws = new WebSocket(WS_URL);
+            let urlObject;
+
+            ws.onopen = () => console.log(`Connected to ${WS_URL}`);
+            ws.onmessage = message => {
+                const arrayBuffer = message.data;
+                if (urlObject) {
+                    URL.revokeObjectURL(urlObject);
+                }
+                urlObject = URL.createObjectURL(new Blob([arrayBuffer]));
+                img.src = urlObject;
+            };
+
+            ws.onerror = error => console.error("WebSocket Error:", error);
+            ws.onclose = () => console.log("WebSocket Connection Closed");
+        </script>
+    </body>
+</html>
