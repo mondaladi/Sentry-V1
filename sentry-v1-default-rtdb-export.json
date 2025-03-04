@@ -1,0 +1,17 @@
+{
+  "board1": {
+    "3v7": 68,
+    "7v4": 34,
+    "direction": 0,
+    "servo1": 0,
+    "servo2": 0
+  },
+  "board2": {
+    "hdop": 0.84,
+    "lat": 22.7788,
+    "led": true,
+    "log": 78.88878767,
+    "speed": 0.3,
+    "wifi": 54
+  }
+}
