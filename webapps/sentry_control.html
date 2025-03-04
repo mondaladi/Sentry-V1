@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bot Control</title>
+  <style>
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .joystick {
+      width: 150px;
+      height: 150px;
+      background-color: #f0f0f0;
+      border-radius: 50%;
+      position: relative;
+    }
+
+    .stick {
+      width: 50px;
+      height: 50px;
+      background-color: #333;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+  <!-- Include Firebase JavaScript SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+      // Initialize Firebase
+      const firebaseConfig = {
+        apiKey: "YOUR_FIREBASE_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.YOUR_REGION.firebasedatabase.app",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+      };
+
+      firebase.initializeApp(firebaseConfig);
+
+      // Get a reference to the RTDB "direction" node
+      const dbRef = firebase.database().ref('board1/');
+
+      function updateDirection(direction) {
+      // Ensure direction is an integer
+      const intDirection = parseInt(direction, 10);
+      // Update only the 'direction' field in the database
+      dbRef.child('direction').set(intDirection)
+    }
+
+
+      const joystick = document.getElementById('joystick');
+      const stick = document.getElementById('stick');
+      let isDragging = false;
+
+      function getEventPosition(e) {
+        if (e.touches) {
+          return {
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY
+          };
+        }
+        return {
+          x: e.clientX,
+          y: e.clientY
+        };
+      }
+
+      function startDrag(e) {
+        e.preventDefault();
+        isDragging = true;
+        document.addEventListener('mousemove', moveStick);
+        document.addEventListener('touchmove', moveStick);
+      }
+
+      function moveStick(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+
+        const bounds = joystick.getBoundingClientRect();
+        const position = getEventPosition(e);
+
+        const centerX = bounds.left + bounds.width / 2;
+        const centerY = bounds.top + bounds.height / 2;
+
+        const deltaX = position.x - centerX;
+        const deltaY = position.y - centerY;
+        const angle = Math.atan2(deltaY, deltaX);
+        const distance = Math.min(Math.sqrt(deltaX * deltaX + deltaY * deltaY), bounds.width / 2);
+
+        const stickX = centerX + distance * Math.cos(angle);
+        const stickY = centerY + distance * Math.sin(angle);
+
+        stick.style.left = `${stickX - bounds.left}px`;
+        stick.style.top = `${stickY - bounds.top}px`;
+
+        // Calculate direction based on angle
+        let direction;
+        const degree = (angle * 180 / Math.PI) + 180; // convert radians to degrees and normalize to 0-360
+
+        if (degree >= 337.5 || degree < 22.5) {
+          direction = 3; // Left
+        } else if (degree >= 22.5 && degree < 67.5) {
+          direction = 5; // Forward and left
+        } else if (degree >= 67.5 && degree < 112.5) {
+          direction = 1; // Forward
+        } else if (degree >= 112.5 && degree < 157.5) {
+          direction = 6; // Forward and right
+        } else if (degree >= 157.5 && degree < 202.5) {
+          direction = 4; // Right
+        } else if (degree >= 202.5 && degree < 247.5) {
+          direction = 8; // Backward and right
+        } else if (degree >= 247.5 && degree < 292.5) {
+          direction = 2; // Backward
+        } else if (degree >= 292.5 && degree < 337.5) {
+          direction = 7; // Backward and left
+        }
+
+        // Update bot direction in the database
+        updateDirection(direction);
+        console.log(`Angle: ${degree.toFixed(2)}°, Direction: ${direction}`);
+      }
+
+      function stopDrag() {
+        isDragging = false;
+        document.removeEventListener('mousemove', moveStick);
+        document.removeEventListener('touchmove', moveStick);
+
+        // Reset stick position
+        stick.style.left = '50%';
+        stick.style.top = '50%';
+
+        // Update bot direction to stop movement
+        updateDirection(0);
+      }
+
+      joystick.addEventListener('mousedown', startDrag);
+      joystick.addEventListener('touchstart', startDrag);
+      document.addEventListener('mouseup', stopDrag);
+      document.addEventListener('touchend', stopDrag);
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div class="joystick" id="joystick">
+      <div class="stick" id="stick"></div>
+    </div>
+  </div>
+</body>
+</html>
