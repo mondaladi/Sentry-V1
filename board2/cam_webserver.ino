@@ -2,24 +2,12 @@
 #include <WiFi.h>
 #include <ArduinoWebsockets.h>
 
-//
-// WARNING!!! Make sure that you have either selected ESP32 Wrover Module,
-//            or another board which has PSRAM enabled
-//
-
-// Select camera model
-//#define CAMERA_MODEL_WROVER_KIT
-//#define CAMERA_MODEL_ESP_EYE
-//#define CAMERA_MODEL_M5STACK_PSRAM
-//#define CAMERA_MODEL_M5STACK_WIDE
 #define CAMERA_MODEL_AI_THINKER
-
 #include "camera_pins.h"
 
-const char* ssid = "Wi-Fi SSID";
-const char* password = "Wi-Fi PASSWORD";
-const char* websocket_server_host = "192.168.1.4";
-const uint16_t websocket_server_port = 65080;
+const char* ssid = "Network SSID";
+const char* password = "Network PASSWORD";
+const char* websocket_server_url = "Websocket Server URL";
 
 using namespace websockets;
 WebsocketsClient client;
@@ -28,6 +16,13 @@ void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
+
+  // Ensure camera power-up
+  if (PWDN_GPIO_NUM != -1) {
+    pinMode(PWDN_GPIO_NUM, OUTPUT);
+    digitalWrite(PWDN_GPIO_NUM, LOW);
+  }
+  delay(10);
 
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -50,60 +45,69 @@ void setup() {
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 10000000;
   config.pixel_format = PIXFORMAT_JPEG;
-  //init with high specs to pre-allocate larger buffers
-  if(psramFound()){
+
+  if (psramFound()) {
+    Serial.println("PSRAM found!");
     config.frame_size = FRAMESIZE_VGA;
     config.jpeg_quality = 40;
     config.fb_count = 2;
   } else {
-    config.frame_size = FRAMESIZE_SVGA;
+    Serial.println("PSRAM not found, using lower quality");
+    config.frame_size = FRAMESIZE_QVGA;
     config.jpeg_quality = 12;
     config.fb_count = 1;
   }
 
-
-  // camera init
+  // Initialize camera
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x", err);
+    Serial.printf("Camera init failed with error 0x%x\n", err);
     return;
   }
 
- 
-
   WiFi.begin(ssid, password);
-
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("");
-  Serial.println("WiFi connected");
-
+  Serial.println("\nWiFi connected");
   Serial.print("Camera Ready! Use 'http://");
   Serial.print(WiFi.localIP());
   Serial.println("' to connect");
 
-  while(!client.connect(websocket_server_host, websocket_server_port, "/")){
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("Websocket Connected!");
+  connectWebSocket();
 }
 
 void loop() {
+  if (!client.available()) {
+    Serial.println("WebSocket disconnected! Reconnecting...");
+    connectWebSocket();
+  }
+
   camera_fb_t *fb = esp_camera_fb_get();
-  if(!fb){
+  if (!fb) {
     Serial.println("Camera capture failed");
-    esp_camera_fb_return(fb);
     return;
   }
 
-  if(fb->format != PIXFORMAT_JPEG){
+  if (fb->format != PIXFORMAT_JPEG) {
     Serial.println("Non-JPEG data not implemented");
+    esp_camera_fb_return(fb);
     return;
   }
 
   client.sendBinary((const char*) fb->buf, fb->len);
   esp_camera_fb_return(fb);
+}
+
+void connectWebSocket() {
+  if (client.available()) {
+    client.close();
+  }
+
+  while (!client.connect(websocket_server_url)) {
+    delay(1000);
+    Serial.print(".");
+  }
+  Serial.println("\nWebSocket Connected!");
 }
