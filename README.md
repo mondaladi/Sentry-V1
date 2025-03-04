@@ -1,4 +1,4 @@
-# Sentry-V1: Advanced Surveillance RC Car 🚗📷  
+# Sentry-V1: Advanced Surveillance RC Car 🚗 
 
 Sentry-V1 is a robust, custom-built surveillance RC car featuring real-time video streaming, remote control, and GPS tracking from anywhere in the world. Designed with an ESP32-CAM and ESP32 Dev Module, this bot ensures seamless monitoring and control over the internet.
 
