@@ -19,9 +19,7 @@ Sentry-V1 is a robust, custom-built surveillance RC car featuring real-time vide
 - Remote control via Firebase RTDB.  
 - Real-time video streaming using WebSockets.  
 
-🔜 **Upcoming Features**:  
-- Custom WebSocket server using JavaScript.  
-- LED integration for low-light conditions.  
+🔜 **Upcoming Features**:     
 - Real-world Wi-Fi speed tracking.  
 - Unified web app for monitoring and control.  
 
