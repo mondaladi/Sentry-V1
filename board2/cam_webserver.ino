@@ -16,11 +16,9 @@
 
 #include "camera_pins.h"
 
-const char* ssid = "";
-const char* password = "";
-const char* websocket_server_host = "";
-const uint16_t websocket_server_port = 65080;
-
+const char* ssid = "Adi(2.4GHz)";
+const char* password = "nonetwork@129";
+const char* websocket_server_url = "ws://server-url";
 using namespace websockets;
 WebsocketsClient client;
 
@@ -48,19 +46,11 @@ void setup() {
   config.pin_sscb_scl = SIOC_GPIO_NUM;
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 10000000;
+  config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
-  //init with high specs to pre-allocate larger buffers
-  if(psramFound()){
-    config.frame_size = FRAMESIZE_VGA;
-    config.jpeg_quality = 40;
-    config.fb_count = 2;
-  } else {
-    config.frame_size = FRAMESIZE_SVGA;
-    config.jpeg_quality = 12;
-    config.fb_count = 1;
-  }
-
+  config.frame_size = FRAMESIZE_HVGA;        // HVGA (480 x 320) or VGA (640 X 480) or SVGA (800 X 600)
+  config.jpeg_quality = 20;                 // Higher quality (lower number is better)
+  config.fb_count = psramFound() ? 2 : 1;   // Keep 2 for smoother capture if PSRAM is present
 
   // camera init
   esp_err_t err = esp_camera_init(&config);
@@ -69,7 +59,11 @@ void setup() {
     return;
   }
 
- 
+  sensor_t *s = esp_camera_sensor_get();
+
+  // Flip horizontally and vertically
+  s->set_hmirror(s, 1);  // Horizontal flip
+  s->set_vflip(s, 1);    // Vertical flip
 
   WiFi.begin(ssid, password);
 
@@ -84,8 +78,10 @@ void setup() {
   Serial.print(WiFi.localIP());
   Serial.println("' to connect");
 
-  while(!client.connect(websocket_server_host, websocket_server_port, "/")){
-    delay(500);
+  client.setInsecure();  // Skips cert validation
+
+  while(!client.connect(websocket_server_url)){
+    delay(1000);
     Serial.print(".");
   }
   Serial.println("Websocket Connected!");
@@ -106,4 +102,7 @@ void loop() {
 
   client.sendBinary((const char*) fb->buf, fb->len);
   esp_camera_fb_return(fb);
+  client.poll();
+
+  delay(50);
 }
